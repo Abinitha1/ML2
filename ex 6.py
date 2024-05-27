@@ -1,51 +1,50 @@
-# Install pgmpy and streamlit
 import streamlit as st
-import pandas as pd
-from pgmpy.models import BayesianModel
-from pgmpy.estimators import MaximumLikelihoodEstimator
+import numpy as np
+from pgmpy.models import BayesianNetwork
+from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
 
-# Load the dataset
-heart_disease = pd.read_csv("/content/data7_heart.csv")
-
-# Define the Bayesian network structure
-model = BayesianModel([
-    ('age', 'trestbps'),
-    ('age', 'fbs'),
-    ('sex', 'trestbps'),
-    ('exang', 'trestbps'),
-    ('trestbps', 'heartdisease'),
-    ('fbs', 'heartdisease'),
-    ('heartdisease', 'restecg'),
-    ('heartdisease', 'thalach'),
-    ('heartdisease', 'chol')
+# Define the structure of the Bayesian Network
+model = BayesianNetwork([
+    ('A', 'C'),
+    ('B', 'C')
 ])
 
-# Fit the model using Maximum Likelihood Estimator
-model.fit(heart_disease, estimator=MaximumLikelihoodEstimator)
+# Define the Conditional Probability Distributions (CPDs)
+cpd_A = TabularCPD(variable='A', variable_card=2, values=[[0.8], [0.2]])
+cpd_B = TabularCPD(variable='B', variable_card=2, values=[[0.7], [0.3]])
+cpd_C = TabularCPD(variable='C', variable_card=2, 
+                   values=[[0.9, 0.6, 0.7, 0.1],
+                           [0.1, 0.4, 0.3, 0.9]],
+                   evidence=['A', 'B'],
+                   evidence_card=[2, 2])
 
-# Create an inference object
-HeartDisease_infer = VariableElimination(model)
+# Add CPDs to the model
+model.add_cpds(cpd_A, cpd_B, cpd_C)
 
-# Streamlit app
-def main():
-    st.title("Heart Disease Prediction")
+# Validate the model
+model.check_model()
 
-    # User inputs
-    age = st.number_input('Enter age', value=0, step=1)
-    sex = st.selectbox('Select sex', ['Male', 'Female'])
-    trestbps = st.number_input('Enter resting blood pressure', value=0, step=1)
-    fbs = st.selectbox('Select fasting blood sugar level', ['> 120 mg/dl', '< 120 mg/dl'])
+# Perform inference
+inference = VariableElimination(model)
 
-    # Convert categorical inputs to numerical
-    sex = 0 if sex == 'Male' else 1
-    fbs = 1 if fbs == '> 120 mg/dl' else 0
+st.title("Bayesian Network Inference")
 
-    # Perform inference
-    q = HeartDisease_infer.query(variables=['heartdisease'], evidence={'age': age, 'sex': sex, 'trestbps': trestbps, 'fbs': fbs})
+st.write("This application performs inference on a simple Bayesian Network.")
 
-    # Output prediction
-    st.write("Probability of Heart Disease:", q.values[1])
+# User inputs
+a = st.selectbox('Select value for A', ['True', 'False'])
+b = st.selectbox('Select value for B', ['True', 'False'])
 
-if __name__ == "__main__":
-    main()
+# Map user input to network values
+evidence = {
+    'A': 1 if a == 'True' else 0,
+    'B': 1 if b == 'True' else 0
+}
+
+# Perform inference
+result = inference.query(variables=['C'], evidence=evidence)
+
+# Display the results
+st.write(f"Probability of C given A={a} and B={b}:")
+st.write(result)
