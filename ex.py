@@ -1,8 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
 
 # Sample dataset
 data = [
@@ -29,8 +26,44 @@ data = [
 # Preprocess the data
 def preprocess_data(data):
     df = pd.DataFrame(data, columns=['text', 'label'])
-    df['text'] = df['text'].str.lower()
+    df['text'] = df['text'].str.lower().str.split()
     return df
+
+# Train Naive Bayes model
+def train_naive_bayes(df):
+    num_pos = (df['label'] == 'pos').sum()
+    num_neg = len(df) - num_pos
+    total_docs = len(df)
+    
+    p_pos = num_pos / total_docs
+    p_neg = num_neg / total_docs
+    
+    word_counts_pos = {}
+    word_counts_neg = {}
+    
+    for index, row in df.iterrows():
+        for word in row['text']:
+            if row['label'] == 'pos':
+                word_counts_pos[word] = word_counts_pos.get(word, 0) + 1
+            else:
+                word_counts_neg[word] = word_counts_neg.get(word, 0) + 1
+    
+    vocab_size = len(set(df['text'].sum()))
+    p_word_given_pos_smooth = {word: (count + 1) / (num_pos + vocab_size) for word, count in word_counts_pos.items()}
+    p_word_given_neg_smooth = {word: (count + 1) / (num_neg + vocab_size) for word, count in word_counts_neg.items()}
+    
+    return p_pos, p_neg, p_word_given_pos_smooth, p_word_given_neg_smooth
+
+# Classify a document
+def classify_document(document, p_pos, p_neg, p_word_given_pos, p_word_given_neg):
+    p_pos_given_doc = p_pos
+    p_neg_given_doc = p_neg
+    
+    for word in document:
+        p_pos_given_doc *= p_word_given_pos.get(word, 1 / (len(p_word_given_pos) + 1))
+        p_neg_given_doc *= p_word_given_neg.get(word, 1 / (len(p_word_given_neg) + 1))
+    
+    return 'pos' if p_pos_given_doc > p_neg_given_doc else 'neg'
 
 # Streamlit app
 def main():
@@ -43,20 +76,16 @@ def main():
 
     # Train the model
     if st.button("Train Model"):
-        st.write("Training model...")
-        count_vect = CountVectorizer()
-        X_train_counts = count_vect.fit_transform(df['text'])
-        clf = MultinomialNB()
-        clf.fit(X_train_counts, df['label'])
+        p_pos, p_neg, p_word_given_pos, p_word_given_neg = train_naive_bayes(df)
         st.success("Model trained successfully!")
 
         # New document input
         st.subheader("Classify New Document")
         doc = st.text_input("Enter new document:")
         if st.button("Classify"):
-            X_new_counts = count_vect.transform([doc])
-            predicted_class = clf.predict(X_new_counts)
-            st.write(f"Predicted class: {predicted_class[0]}")
+            doc = doc.lower().split()
+            predicted_class = classify_document(doc, p_pos, p_neg, p_word_given_pos, p_word_given_neg)
+            st.write(f"Predicted class: {predicted_class}")
 
 if __name__ == "__main__":
     main()
