@@ -1,49 +1,49 @@
+!pip install streamlit scikit-learn matplotlib
+
+# Import required libraries
 import streamlit as st
-from pgmpy.models import BayesianNetwork
-from pgmpy.factors.discrete import TabularCPD
-from pgmpy.inference import VariableElimination
+from sklearn.cluster import KMeans
+from sklearn import preprocessing
+from sklearn.mixture import GaussianMixture
+from sklearn.datasets import load_iris
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
-# Define the structure of the Bayesian Network
-model = BayesianNetwork([
-    ('A', 'C'),
-    ('B', 'C')
-])
+# Load the Iris dataset
+dataset = load_iris()
 
-# Define the Conditional Probability Distributions (CPDs)
-cpd_A = TabularCPD(variable='A', variable_card=2, values=[[0.8], [0.2]])
-cpd_B = TabularCPD(variable='B', variable_card=2, values=[[0.7], [0.3]])
-cpd_C = TabularCPD(variable='C', variable_card=2, 
-                   values=[[0.9, 0.6, 0.7, 0.1],
-                           [0.1, 0.4, 0.3, 0.9]],
-                   evidence=['A', 'B'],
-                   evidence_card=[2, 2])
+# Preprocessing
+X = pd.DataFrame(dataset.data, columns=['Sepal_Length', 'Sepal_Width', 'Petal_Length', 'Petal_Width'])
+y = pd.DataFrame(dataset.target, columns=['Targets'])
+colormap = np.array(['red', 'lime', 'black'])
 
-# Add CPDs to the model
-model.add_cpds(cpd_A, cpd_B, cpd_C)
+# Streamlit app
+st.title("Iris Flower Clustering")
 
-# Validate the model
-model.check_model()
+# Plotting
+fig, ax = plt.subplots(1, 3, figsize=(18, 6))
 
-# Perform inference
-inference = VariableElimination(model)
+# Real Plot
+ax[0].scatter(X['Petal_Length'], X['Petal_Width'], c=colormap[y['Targets']], s=40)
+ax[0].set_title('Real')
 
-st.title("Bayesian Network Inference")
+# KMeans Plot
+model = KMeans(n_clusters=3)
+model.fit(X)
+predY = np.choose(model.labels_, [0, 1, 2]).astype(np.int64)
+ax[1].scatter(X['Petal_Length'], X['Petal_Width'], c=colormap[predY], s=40)
+ax[1].set_title('KMeans')
 
-st.write("This application performs inference on a simple Bayesian Network.")
+# Gaussian Mixture Model (GMM) Plot
+scaler = preprocessing.StandardScaler()
+xsa = scaler.fit_transform(X)
+xs = pd.DataFrame(xsa, columns=X.columns)
+gmm = GaussianMixture(n_components=3)
+gmm.fit(xs)
+y_cluster_gmm = gmm.predict(xs)
+ax[2].scatter(X['Petal_Length'], X['Petal_Width'], c=colormap[y_cluster_gmm], s=40)
+ax[2].set_title('GMM Classification')
 
-# User inputs
-a = st.selectbox('Select value for A', ['True', 'False'])
-b = st.selectbox('Select value for B', ['True', 'False'])
-
-# Map user input to network values
-evidence = {
-    'A': 1 if a == 'True' else 0,
-    'B': 1 if b == 'True' else 0
-}
-
-# Perform inference
-result = inference.query(variables=['C'], evidence=evidence)
-
-# Display the results
-st.write(f"Probability of C given A={a} and B={b}:")
-st.write(result)
+# Streamlit display
+st.pyplot(fig)
