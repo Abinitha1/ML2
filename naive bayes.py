@@ -9,7 +9,7 @@ def label_encode(data):
     return encoded_data, label_map
 
 def main():
-    st.title("Tennis Play Prediction")
+    st.title("Tennis Play Prediction") 
 
     # Create a DataFrame
     data = {
