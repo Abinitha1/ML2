@@ -47,4 +47,3 @@ result = inference.query(variables=['C'], evidence=evidence)
 # Display the results
 st.write(f"Probability of C given A={a} and B={b}:")
 st.write(result)
-
