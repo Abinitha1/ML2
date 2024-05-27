@@ -1,5 +1,4 @@
 import streamlit as st
-import numpy as np
 from pgmpy.models import BayesianNetwork
 from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import VariableElimination
@@ -48,3 +47,4 @@ result = inference.query(variables=['C'], evidence=evidence)
 # Display the results
 st.write(f"Probability of C given A={a} and B={b}:")
 st.write(result)
+
